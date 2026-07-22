@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write # Explicitly grant permission to push changes
+  pull-requests: write # Needed to open a PR when the merge conflicts
 
 jobs:
   sync:
@@ -18,7 +19,12 @@ jobs:
       uses: actions/checkout@v4 # Updated to the latest version
       with:
         fetch-depth: 0 # CRITICAL: Fetches all history for all branches and tags
-        
+        # GITHUB_TOKEN can never push changes to .github/workflows/* (GitHub
+        # blocks this for GitHub App/Actions tokens; no permissions-block
+        # key lifts it). Upstream maintains its own workflow files, so
+        # checkout with a PAT that has the 'workflow' scope instead.
+        token: ${{ secrets.SYNC_PAT }}
+
     - name: Configure git
       run: |
         git config user.name "github-actions[bot]"
@@ -30,8 +36,30 @@ jobs:
     - name: Fetch upstream changes
       run: git fetch upstream
 
-    - name: Merge upstream main branch
-      run: git merge upstream/main --no-edit
+    - name: Attempt merge of upstream main branch
+      id: merge
+      run: |
+        if git merge upstream/main --no-edit; then
+          echo "conflict=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "conflict=true" >> "$GITHUB_OUTPUT"
+        fi
 
-    - name: Push changes to origin
+    - name: Push merged changes to origin
+      if: steps.merge.outputs.conflict == 'false'
       run: git push origin main
+
+    - name: Open a PR with the conflicted merge for manual resolution
+      if: steps.merge.outputs.conflict == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.SYNC_PAT }}
+      run: |
+        branch="sync/upstream-$(date -u +%Y-%m-%d)"
+        git add -A
+        git commit -m "Merge upstream/main (conflicts need manual resolution)"
+        git push origin "HEAD:refs/heads/$branch"
+        gh pr create \
+          --title "Sync with upstream: conflicts need manual resolution" \
+          --body "Automatic sync from upstream (taylorwilsdon/google_workspace_mcp) hit a merge conflict. This PR contains the conflict markers as committed — resolve them locally on this branch, then merge." \
+          --base main \
+          --head "$branch"
