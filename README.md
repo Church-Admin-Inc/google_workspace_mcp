@@ -187,16 +187,17 @@ uvx workspace-mcp --tools gmail drive calendar
 </td>
 <td valign="top" width="50%">
 
-**Secretless / Public OAuth 2.1 (PKCE)**
+**OAuth 2.1 (PKCE)**
 
 ```bash
-# 1. Credentials
+# 1. Credentials - MCP clients connect with PKCE and no
+#    secret, but Google still requires one server-side
 export MCP_ENABLE_OAUTH21=true
 export GOOGLE_OAUTH_CLIENT_ID="..."
+export GOOGLE_OAUTH_CLIENT_SECRET="..."
 export WORKSPACE_MCP_PORT=8000
 export GOOGLE_OAUTH_REDIRECT_URI="http://localhost:${WORKSPACE_MCP_PORT}/oauth2callback"
 export OAUTHLIB_INSECURE_TRANSPORT=1
-export FASTMCP_SERVER_AUTH_GOOGLE_JWT_SIGNING_KEY="$(openssl rand -hex 32)"
 
 # 2. Launch - OAuth 2.1 requires HTTP transport
 uvx workspace-mcp --transport streamable-http --tool-tier core
@@ -206,7 +207,7 @@ uvx workspace-mcp --transport streamable-http --tool-tier core
 </tr>
 </table>
 
-**Tool tiers** keep context windows lean: `core` is the essential set, `extended` adds management operations, `complete` loads everything. Combine with `--tools <service> ...`, `--read-only`, or per-service `--permissions` - details in the [server modes docs](https://workspacemcp.com/docs?utm_source=github.com&utm_medium=referral&utm_campaign=readme&utm_content=tiers-server-modes#server-modes).
+**Tool tiers** keep context windows lean: `core` is the essential set, `extended` adds management operations, `complete` loads everything. Combine with `--tools <service> ...`, `--read-only`, or per-service `--permissions`, and subtract individual tools with `--disabled-tools <name> ...` - details in the [server modes docs](https://workspacemcp.com/docs?utm_source=github.com&utm_medium=referral&utm_campaign=readme&utm_content=tiers-server-modes#server-modes).
 
 ## Connect Your Client
 
@@ -249,7 +250,7 @@ Everything you need to run this in production lives in two places. The [document
 - **[OpenTelemetry tracing](https://workspacemcp.com/docs?utm_source=github.com&utm_medium=referral&utm_campaign=readme&utm_content=deploy-otel#server-modes)** - optional, off unless you configure an OTLP endpoint
 - **Docker** - `docker build -t workspace-mcp . && docker run -p 8000:8000 workspace-mcp`
 
-The **[Advanced Deployment guide](https://workspacemcp.com/docs/deployment?utm_source=github.com&utm_medium=referral&utm_campaign=readme&utm_content=deploy-advanced)** covers self-hosting specifics: reverse proxy setup with `WORKSPACE_EXTERNAL_URL` (including the nginx `Origin: null` consent workaround and `Referrer-Policy` pitfall), origin validation and VS Code webview allowlisting, credential store backends (local directory or GCS with CMEK enforcement), and the **[complete environment variable reference](https://workspacemcp.com/docs/deployment?utm_source=github.com&utm_medium=referral&utm_campaign=readme&utm_content=deploy-env-vars#environment-variables)**.
+The **[Advanced Deployment guide](https://workspacemcp.com/docs/deployment?utm_source=github.com&utm_medium=referral&utm_campaign=readme&utm_content=deploy-advanced)** covers self-hosting specifics: reverse proxy setup with `WORKSPACE_EXTERNAL_URL` (including the nginx `Origin: null` consent workaround, the `WORKSPACE_MCP_ALLOW_NULL_ORIGIN_CONSENT` escape hatch, and the `Referrer-Policy` pitfall), origin validation and VS Code webview allowlisting, credential store backends (local directory or GCS with CMEK enforcement), and the **[complete environment variable reference](https://workspacemcp.com/docs/deployment?utm_source=github.com&utm_medium=referral&utm_campaign=readme&utm_content=deploy-env-vars#environment-variables)**.
 
 ## Security Best Practices
 
@@ -280,4 +281,3 @@ MIT - see [`LICENSE`](LICENSE). The license is 21 lines and says what it means.
 
 Validations:
 [![MCP Badge](https://lobehub.com/badge/mcp/taylorwilsdon-google_workspace_mcp)](https://lobehub.com/mcp/taylorwilsdon-google_workspace_mcp)
-
